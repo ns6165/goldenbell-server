@@ -2,20 +2,20 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const fs = require("fs");
-const cors = require("cors"); // ✅ CORS 모듈 추가
+const cors = require("cors");
 
 const app = express();
-app.use(cors()); // ✅ 모든 출처에서 접근 허용
+app.use(cors());
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // ✅ 모든 클라이언트 출처 허용
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
 
-// ✅ 문제 데이터 불러오기
+// ✅ 문제 데이터 로드
 let questions = [];
 try {
   const rawData = fs.readFileSync("data/goldenbell.json", "utf-8");
@@ -47,13 +47,18 @@ io.on("connection", (socket) => {
     const q = questions[currentQuestion];
     const correct = q.choices[q.answer] === answerText;
 
-    if (!correct) {
-      player.eliminated = true;
-      socket.emit("eliminated");
-    }
-
+    // ✅ 먼저 결과를 보냄 (정답/오답 여부)
     socket.emit("result", correct);
 
+    if (!correct) {
+      // ✅ 오답이라도 바로 탈락시키지 않고 1.5초 후에 탈락 처리
+      setTimeout(() => {
+        player.eliminated = true;
+        socket.emit("eliminated");
+      }, 1500);
+    }
+
+    // ✅ 생존자 수 체크
     const activePlayers = Object.values(players).filter((p) => !p.eliminated);
     if (activePlayers.length === 1) {
       const winnerId = Object.keys(players).find(
@@ -91,4 +96,5 @@ const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`🚀 서버 실행됨 on PORT ${PORT}`);
 });
+
 
