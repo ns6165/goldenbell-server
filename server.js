@@ -27,6 +27,7 @@ let players = {};
 let roomCode = generateCode();
 let currentQuestion = 0;
 let gameStarted = false;
+let answered = new Set(); // ✅ 응답 추적용
 
 function generateCode() {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -53,15 +54,18 @@ io.on("connection", (socket) => {
   socket.on("start", () => {
     gameStarted = true;
     currentQuestion = 0;
+    answered.clear();
     broadcastQuestion();
   });
 
   socket.on("answer", (answerText) => {
     const player = players[socket.id];
-    if (!player || player.eliminated) return;
+    if (!player || player.eliminated || answered.has(socket.id)) return;
 
     const q = questions[currentQuestion];
     const correct = q.choices[q.answer] === answerText;
+
+    answered.add(socket.id);
 
     if (!correct) {
       player.eliminated = true;
@@ -70,19 +74,24 @@ io.on("connection", (socket) => {
 
     socket.emit("result", correct);
 
-    const alive = Object.values(players).filter((p) => !p.eliminated);
-    if (alive.length === 1) {
-      const winner = Object.keys(players).find((id) => !players[id].eliminated);
-      io.emit("winner", players[winner].nickname);
-    }
-  });
+    const totalAlive = Object.keys(players).filter((id) => !players[id].eliminated);
+    const totalAnswered = Array.from(answered).filter(id => players[id] && !players[id].eliminated);
 
-  socket.on("next", () => {
-    currentQuestion++;
-    if (currentQuestion < questions.length) {
-      broadcastQuestion();
-    } else {
-      io.emit("winner", "👑 전원 생존");
+    if (totalAnswered.length === totalAlive.length) {
+      const stillAlive = Object.values(players).filter((p) => !p.eliminated);
+
+      if (stillAlive.length === 1) {
+        const winnerId = Object.keys(players).find(id => players[id].eliminated === false);
+        io.emit("winner", players[winnerId].nickname);
+      } else if (currentQuestion + 1 < questions.length) {
+        setTimeout(() => {
+          currentQuestion++;
+          answered.clear();
+          broadcastQuestion();
+        }, 1500);
+      } else {
+        io.emit("winner", "👑 전원 생존");
+      }
     }
   });
 
@@ -106,5 +115,3 @@ const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`🚀 골든벨 서버 실행 중 (포트: ${PORT})`);
 });
-
-
