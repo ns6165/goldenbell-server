@@ -28,7 +28,7 @@ let currentQuestion = 0;
 let answered = new Set();
 let gameStarted = false;
 
-let roomCode = generateCode();  // ✅ 게임 코드 생성
+let roomCode = generateCode();
 
 function generateCode() {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -37,9 +37,11 @@ function generateCode() {
 io.on("connection", (socket) => {
   console.log("✅ 연결됨:", socket.id);
 
+  // ✅ 관리자용 게임 코드 요청 처리
   socket.on("getCode", () => {
-    socket.emit("code", roomCode);  // ✅ 관리자에게 코드 전송
+    socket.emit("code", roomCode);
   });
+
 
   socket.on("join", (nickname) => {
     if (gameStarted) {
@@ -59,31 +61,32 @@ io.on("connection", (socket) => {
     broadcastQuestion();
   });
 
-  socket.on("answer", (answerText) => {
-    const player = players[socket.id];
-    if (!player || answered.has(socket.id)) return;
+ socket.on("answer", (answerText) => {
+  const player = players[socket.id];
+  if (!player || answered.has(socket.id)) return;
 
-    const q = questions[currentQuestion];
-    const correct = q.choices[q.answer] === answerText;
+  const q = questions[currentQuestion];
+  const correct = q.choices[q.answer] === answerText;
 
-    if (correct) {
-      player.score++;
+  if (correct) {
+    player.score++;
+  }
+
+  answered.add(socket.id);
+  socket.emit("result", correct);
+
+  // ✅ 1명만 있어도 진행되도록 수정
+  setTimeout(() => {
+    if (currentQuestion + 1 < questions.length) {
+      currentQuestion++;
+      answered.clear();
+      broadcastQuestion();
+    } else {
+      sendFinalResults();
     }
+  }, 1500);
+});
 
-    answered.add(socket.id);
-    socket.emit("result", correct);
-
-    // 다음 문제로 자동 진행
-    setTimeout(() => {
-      if (currentQuestion + 1 < questions.length) {
-        currentQuestion++;
-        answered.clear();
-        broadcastQuestion();
-      } else {
-        sendFinalResults();
-      }
-    }, 1500);
-  });
 
   socket.on("disconnect", () => {
     console.log("❌ 연결 해제:", socket.id);
@@ -94,7 +97,7 @@ io.on("connection", (socket) => {
 
 function broadcastQuestion() {
   const q = questions[currentQuestion];
-  console.log(`🧠 문제 ${currentQuestion + 1}: ${q.question}`);
+ console.log(`🧠 문제 ${currentQuestion + 1}: ${q.question}`);
   io.emit("question", {
     index: currentQuestion + 1,
     question: q.question,
@@ -109,17 +112,16 @@ function sendFinalResults() {
     });
   });
 
-  // 🧪 관리자용: 콘솔에 전체 점수 출력
+  // 🧪 관리자 용도: 전체 점수 콘솔 출력 (향후 admin 화면에서 사용)
   console.log("📊 최종 점수표:");
   for (const p of Object.values(players)) {
-    console.log(`- ${p.nickname}: ${p.score}점`);
+   console.log(`- ${p.nickname}: ${p.score}점`);
   }
 }
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
-  console.log(`🚀 골든벨 서버 실행 중 (포트: ${PORT})`);
+ console.log(`🚀 골든벨 서버 실행 중 (포트: ${PORT})`);
 });
-
 
 
