@@ -73,26 +73,33 @@ io.on("connection", (socket) => {
     }
 
     socket.emit("result", correct);
-  });
 
-  socket.on("next", () => {
+    // ✅ 모든 생존자가 답했는지 확인 후 다음 처리
     const totalAlive = Object.keys(players).filter((id) => !players[id].eliminated);
     const totalAnswered = Array.from(answered).filter(id => players[id] && !players[id].eliminated);
 
-    if (totalAnswered.length < totalAlive.length) return; // 아직 응답 안 한 사람 있음
+    if (totalAnswered.length === totalAlive.length) {
+      const survivors = Object.entries(players).filter(([_, p]) => !p.eliminated);
 
-    const survivors = Object.entries(players).filter(([_, p]) => !p.eliminated);
-
-    if (survivors.length === 1) {
-      const winnerNickname = survivors[0][1].nickname;
-      io.emit("winner", winnerNickname);
-    } else if (currentQuestion + 1 < questions.length) {
-      currentQuestion++;
-      answered.clear();
-      broadcastQuestion();
-    } else {
-      io.emit("winner", "👑 전원 생존");
+      if (survivors.length === 1) {
+        const winnerNickname = survivors[0][1].nickname;
+        io.emit("winner", winnerNickname);
+      } else if (currentQuestion + 1 < questions.length) {
+        setTimeout(() => {
+          currentQuestion++;
+          answered.clear();
+          broadcastQuestion();
+        }, 1500);
+      } else {
+        io.emit("winner", "👑 전원 생존");
+      }
     }
+  });
+
+  // ❌ 이제 필요 없음: 클라이언트에서 'next' 보내는 방식 제거 가능
+  socket.on("next", () => {
+    // 원하면 로그만 찍고 무시해도 됨
+    console.log("⚠️ 클라이언트에서 next 수신됨 → 무시됨");
   });
 
   socket.on("disconnect", () => {
@@ -115,4 +122,5 @@ const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
   console.log(`🚀 골든벨 서버 실행 중 (포트: ${PORT})`);
 });
+
 
