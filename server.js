@@ -24,21 +24,12 @@ try {
 }
 
 let players = {};
-let roomCode = generateCode();
 let currentQuestion = 0;
+let answered = new Set();
 let gameStarted = false;
-let answered = new Set(); // ✅ 문제당 응답 추적용
-
-function generateCode() {
-  return Math.random().toString(36).substring(2, 6).toUpperCase();
-}
 
 io.on("connection", (socket) => {
   console.log("✅ 연결됨:", socket.id);
-
-  socket.on("getCode", () => {
-    socket.emit("code", roomCode);
-  });
 
   socket.on("join", (nickname) => {
     if (gameStarted) {
@@ -46,9 +37,9 @@ io.on("connection", (socket) => {
       return;
     }
 
-    players[socket.id] = { nickname, score: 0, eliminated: false };
+    players[socket.id] = { nickname, score: 0 };
     console.log(`👤 ${nickname} 입장`);
-    io.emit("playerList", Object.values(players).map((p) => p.nickname));
+    io.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 
   socket.on("start", () => {
@@ -60,62 +51,61 @@ io.on("connection", (socket) => {
 
   socket.on("answer", (answerText) => {
     const player = players[socket.id];
-    if (!player || player.eliminated || answered.has(socket.id)) return;
+    if (!player || answered.has(socket.id)) return;
 
     const q = questions[currentQuestion];
     const correct = q.choices[q.answer] === answerText;
 
-    answered.add(socket.id);
-
-    if (!correct) {
-      player.eliminated = true;
-      socket.emit("eliminated");
+    if (correct) {
+      player.score++;
     }
 
+    answered.add(socket.id);
     socket.emit("result", correct);
 
-    // ✅ 모든 생존자가 답했는지 확인 후 다음 처리
-    const totalAlive = Object.keys(players).filter((id) => !players[id].eliminated);
-    const totalAnswered = Array.from(answered).filter(id => players[id] && !players[id].eliminated);
-
-    if (totalAnswered.length === totalAlive.length) {
-      const survivors = Object.entries(players).filter(([_, p]) => !p.eliminated);
-
-      if (survivors.length === 1) {
-        const winnerNickname = survivors[0][1].nickname;
-        io.emit("winner", winnerNickname);
-      } else if (currentQuestion + 1 < questions.length) {
+    // 모든 플레이어가 응답했는지 확인
+    if (answered.size === Object.keys(players).length) {
+      if (currentQuestion + 1 < questions.length) {
         setTimeout(() => {
           currentQuestion++;
           answered.clear();
           broadcastQuestion();
         }, 1500);
       } else {
-        io.emit("winner", "👑 전원 생존");
+        sendFinalResults();
       }
     }
-  });
-
-  // ❌ 이제 필요 없음: 클라이언트에서 'next' 보내는 방식 제거 가능
-  socket.on("next", () => {
-    // 원하면 로그만 찍고 무시해도 됨
-    console.log("⚠️ 클라이언트에서 next 수신됨 → 무시됨");
   });
 
   socket.on("disconnect", () => {
     console.log("❌ 연결 해제:", socket.id);
     delete players[socket.id];
-    io.emit("playerList", Object.values(players).map((p) => p.nickname));
+    io.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 });
 
 function broadcastQuestion() {
   const q = questions[currentQuestion];
+  console.log(`🧠 문제 ${currentQuestion + 1}: ${q.question}`);
   io.emit("question", {
     index: currentQuestion + 1,
     question: q.question,
     choices: q.choices,
   });
+}
+
+function sendFinalResults() {
+  Object.entries(players).forEach(([id, player]) => {
+    io.to(id).emit("finalResult", {
+      score: player.score,
+    });
+  });
+
+  // 🧪 관리자 용도: 전체 점수 콘솔 출력 (향후 admin 화면에서 사용)
+  console.log("📊 최종 점수표:");
+  for (const p of Object.values(players)) {
+    console.log(`- ${p.nickname}: ${p.score}점`);
+  }
 }
 
 const PORT = process.env.PORT || 10000;
