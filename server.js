@@ -49,33 +49,32 @@ io.on("connection", (socket) => {
     broadcastQuestion();
   });
 
-  socket.on("answer", (answerText) => {
-    const player = players[socket.id];
-    if (!player || answered.has(socket.id)) return;
+ socket.on("answer", (answerText) => {
+  const player = players[socket.id];
+  if (!player || answered.has(socket.id)) return;
 
-    const q = questions[currentQuestion];
-    const correct = q.choices[q.answer] === answerText;
+  const q = questions[currentQuestion];
+  const correct = q.choices[q.answer] === answerText;
 
-    if (correct) {
-      player.score++;
+  if (correct) {
+    player.score++;
+  }
+
+  answered.add(socket.id);
+  socket.emit("result", correct);
+
+  // ✅ 1명만 있어도 진행되도록 수정
+  setTimeout(() => {
+    if (currentQuestion + 1 < questions.length) {
+      currentQuestion++;
+      answered.clear();
+      broadcastQuestion();
+    } else {
+      sendFinalResults();
     }
+  }, 1500);
+});
 
-    answered.add(socket.id);
-    socket.emit("result", correct);
-
-    // 모든 플레이어가 응답했는지 확인
-    if (answered.size === Object.keys(players).length) {
-      if (currentQuestion + 1 < questions.length) {
-        setTimeout(() => {
-          currentQuestion++;
-          answered.clear();
-          broadcastQuestion();
-        }, 1500);
-      } else {
-        sendFinalResults();
-      }
-    }
-  });
 
   socket.on("disconnect", () => {
     console.log("❌ 연결 해제:", socket.id);
