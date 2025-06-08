@@ -37,11 +37,14 @@ function generateCode() {
 io.on("connection", (socket) => {
   console.log("✅ 연결됨:", socket.id);
 
-  // ✅ 관리자용 게임 코드 요청 처리
   socket.on("getCode", () => {
     socket.emit("code", roomCode);
   });
 
+  socket.on("verifyCode", (code) => {
+    const isValid = code === roomCode;
+    socket.emit("codeVerified", isValid);
+  });
 
   socket.on("join", (nickname) => {
     if (gameStarted) {
@@ -123,5 +126,6 @@ const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
  console.log(`🚀 골든벨 서버 실행 중 (포트: ${PORT})`);
 });
+
 
 
