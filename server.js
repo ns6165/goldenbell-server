@@ -122,18 +122,19 @@ function broadcastQuestion() {
 }
 
 function sendFinalResults() {
+  const resultData = {};
   Object.entries(players).forEach(([id, player]) => {
-    io.to(id).emit("finalResult", {
-      score: player.score,
-    });
+    resultData[player.nickname] = player.score;
   });
 
-  // 🧪 관리자 용도: 전체 점수 콘솔 출력 (향후 admin 화면에서 사용)
+  io.emit("finalResult", resultData); // ✅ 모든 클라이언트에게 전달
+
   console.log("📊 최종 점수표:");
   for (const p of Object.values(players)) {
-   console.log(`- ${p.nickname}: ${p.score}점`);
+    console.log(`- ${p.nickname}: ${p.score}점`);
   }
 }
+
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
