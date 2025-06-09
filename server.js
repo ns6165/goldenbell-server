@@ -57,6 +57,10 @@ io.on("connection", (socket) => {
     io.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 
+    socket.on("getPlayerList", () => {
+    socket.emit("playerList", Object.values(players).map(p => p.nickname));
+  });
+
   socket.on("start", () => {
     gameStarted = true;
     currentQuestion = 0;
