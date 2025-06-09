@@ -61,15 +61,20 @@ io.on("connection", (socket) => {
     socket.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 
- socket.on("start", () => {
-  if (gameStarted) return; // 이미 시작된 경우 중복 방지
+socket.on("start", () => {
+  if (gameStarted) return;
   gameStarted = true;
   currentQuestion = 0;
   answered.clear();
 
-  // ✅ 모든 참가자에게 startGame 신호 → 클라이언트에서 startCountdown 실행
-  io.emit("startGame");
+  io.emit("startGame");  // ✅ 클라이언트에 카운트다운 시작
+
+  // ✅ 4초 후 문제 출제 (카운트다운 완료 후)
+  setTimeout(() => {
+    broadcastQuestion();
+  }, 4000);
 });
+
 
 
  socket.on("answer", (answerText) => {
