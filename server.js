@@ -91,7 +91,7 @@ io.on("connection", (socket) => {
     } else {
       sendFinalResults();
     }
-  }, 1500);
+  }, 1000);
 });
 
 
