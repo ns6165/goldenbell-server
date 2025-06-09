@@ -75,9 +75,7 @@ socket.on("start", () => {
   }, 4000);
 });
 
-
-
- socket.on("answer", (answerText) => {
+socket.on("answer", (answerText) => {
   const player = players[socket.id];
   if (!player || answered.has(socket.id)) return;
 
@@ -91,7 +89,13 @@ socket.on("start", () => {
   answered.add(socket.id);
   socket.emit("result", correct);
 
-  // ✅ 1명만 있어도 진행되도록 수정
+  // ✅ 관리자에게 실시간 점수 전송
+  io.emit("playerUpdate", Object.entries(players).map(([id, p]) => ({
+    nickname: p.nickname,
+    score: p.score
+  })));
+
+  // 다음 문제로 진행
   setTimeout(() => {
     if (currentQuestion + 1 < questions.length) {
       currentQuestion++;
