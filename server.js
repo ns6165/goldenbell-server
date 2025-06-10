@@ -75,7 +75,7 @@ socket.on("start", () => {
   }, 4000);
 });
 
-socket.on("answer", (answerText) => {
+socket.on("answer", ({ answerText, scoreDelta }) => {
   const player = players[socket.id];
   if (!player || answered.has(socket.id)) return;
 
@@ -83,7 +83,7 @@ socket.on("answer", (answerText) => {
   const correct = q.choices[q.answer] === answerText;
 
   if (correct) {
-    player.score++;
+    player.score += scoreDelta || 1;  // scoreDelta가 없으면 기본 1점
   }
 
   answered.add(socket.id);
