@@ -126,19 +126,21 @@ function broadcastQuestion() {
 }
 
 function sendFinalResults() {
-  const resultData = {};
-  Object.entries(players).forEach(([id, player]) => {
-    resultData[player.nickname] = player.score;
-  });
+  const sortedResults = Object.values(players)
+    .sort((a, b) => b.score - a.score)  // 점수 기준 내림차순 정렬
+    .map((player, index) => ({
+      rank: index + 1,
+      nickname: player.nickname,
+      score: player.score
+    }));
 
-  io.emit("finalResult", resultData); // ✅ 모든 클라이언트에게 전달
+  io.emit("finalResult", sortedResults);  // 정렬된 배열 전송
 
   console.log("📊 최종 점수표:");
-  for (const p of Object.values(players)) {
-    console.log(`- ${p.nickname}: ${p.score}점`);
-  }
+  sortedResults.forEach(p => {
+    console.log(`- ${p.rank}등 ${p.nickname}: ${p.score}점`);
+  });
 }
-
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
