@@ -107,13 +107,23 @@ socket.on("answer", ({ answerText, scoreDelta }) => {
   }, 1000);
 });
 
+socket.on("disconnect", () => {
+  if (players[socket.id]) {
+    const nickname = players[socket.id].nickname;
+    console.log("🕒 퇴장 대기 시작:", nickname);
 
-  socket.on("disconnect", () => {
-    console.log("❌ 연결 해제:", socket.id);
-    delete players[socket.id];
-    io.emit("playerList", Object.values(players).map(p => p.nickname));
-  });
+    setTimeout(() => {
+      if (players[socket.id]) {
+        console.log("❌ 최종 퇴장:", nickname);
+        delete players[socket.id];
+        io.emit("playerList", Object.values(players).map(p => p.nickname));
+      } else {
+        console.log("✅ 재접속 감지, 퇴장 취소:", nickname);
+      }
+    }, 10000); // 10초 후 확인
+  }
 });
+
 
 function broadcastQuestion() {
   const q = questions[currentQuestion];
