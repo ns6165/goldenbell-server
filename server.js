@@ -33,7 +33,6 @@ let roomCode = generateCode();
 function generateCode() {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
-
 io.on("connection", (socket) => {
   console.log("✅ 연결됨:", socket.id);
 
@@ -57,43 +56,71 @@ io.on("connection", (socket) => {
     io.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 
-    socket.on("getPlayerList", () => {
+  socket.on("getPlayerList", () => {
     socket.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 
-socket.on("start", () => {
-  if (gameStarted) return;
-  gameStarted = true;
-  currentQuestion = 0;
-  answered.clear();
+  socket.on("start", () => {
+    if (gameStarted) return;
+    gameStarted = true;
+    currentQuestion = 0;
+    answered.clear();
 
-  io.emit("startGame");  // ✅ 클라이언트에 카운트다운 시작
+    io.emit("startGame");
 
-  // ✅ 4초 후 문제 출제 (카운트다운 완료 후)
-  setTimeout(() => {
-    broadcastQuestion();
-  }, 4000);
-});
+    setTimeout(() => {
+      broadcastQuestion();
+    }, 4000);
+  });
 
-socket.on("answer", ({ answerText, scoreDelta }) => {
-  const player = players[socket.id];
-  if (!player || answered.has(socket.id)) return;
+  socket.on("answer", ({ answerText, scoreDelta }) => {
+    const player = players[socket.id];
+    if (!player || answered.has(socket.id)) return;
 
-  const q = questions[currentQuestion];
-  const correct = q.choices[q.answer] === answerText;
+    const q = questions[currentQuestion];
+    const correct = q.choices[q.answer] === answerText;
 
-  if (correct) {
-    player.score += scoreDelta || 1;  // scoreDelta가 없으면 기본 1점
-  }
+    if (correct) {
+      player.score += scoreDelta || 1;
+    }
 
-  answered.add(socket.id);
-  socket.emit("result", correct);
+    answered.add(socket.id);
+    socket.emit("result", correct);
 
-  // ✅ 관리자에게 실시간 점수 전송
-  io.emit("playerUpdate", Object.entries(players).map(([id, p]) => ({
-    nickname: p.nickname,
-    score: p.score
-  })));
+    io.emit("playerUpdate", Object.entries(players).map(([id, p]) => ({
+      nickname: p.nickname,
+      score: p.score
+    })));
+
+    setTimeout(() => {
+      if (currentQuestion + 1 < questions.length) {
+        currentQuestion++;
+        answered.clear();
+        broadcastQuestion();
+      } else {
+        sendFinalResults();
+      }
+    }, 1000);
+  });
+
+  socket.on("disconnect", () => {
+    if (players[socket.id]) {
+      const nickname = players[socket.id].nickname;
+      console.log("🕒 퇴장 대기 시작:", nickname);
+
+      setTimeout(() => {
+        if (players[socket.id]) {
+          console.log("❌ 최종 퇴장:", nickname);
+          delete players[socket.id];
+          io.emit("playerList", Object.values(players).map(p => p.nickname));
+        } else {
+          console.log("✅ 재접속 감지, 퇴장 취소:", nickname);
+        }
+      }, 10000);
+    }
+  });
+}); // 이 괄호는 꼭 닫혀야 합니다!
+
 
   // 다음 문제로 진행
   setTimeout(() => {
@@ -107,22 +134,6 @@ socket.on("answer", ({ answerText, scoreDelta }) => {
   }, 1000);
 });
 
-socket.on("disconnect", () => {
-  if (players[socket.id]) {
-    const nickname = players[socket.id].nickname;
-    console.log("🕒 퇴장 대기 시작:", nickname);
-
-    setTimeout(() => {
-      if (players[socket.id]) {
-        console.log("❌ 최종 퇴장:", nickname);
-        delete players[socket.id];
-        io.emit("playerList", Object.values(players).map(p => p.nickname));
-      } else {
-        console.log("✅ 재접속 감지, 퇴장 취소:", nickname);
-      }
-    }, 10000); // 10초 후 확인
-  }
-});
 
 
 function broadcastQuestion() {
