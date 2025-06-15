@@ -121,21 +121,6 @@ io.on("connection", (socket) => {
   });
 }); // 이 괄호는 꼭 닫혀야 합니다!
 
-
-  // 다음 문제로 진행
-  setTimeout(() => {
-    if (currentQuestion + 1 < questions.length) {
-      currentQuestion++;
-      answered.clear();
-      broadcastQuestion();
-    } else {
-      sendFinalResults();
-    }
-  }, 1000);
-});
-
-
-
 function broadcastQuestion() {
   const q = questions[currentQuestion];
  console.log(`🧠 문제 ${currentQuestion + 1}: ${q.question}`);
