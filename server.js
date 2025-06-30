@@ -119,6 +119,18 @@ io.on("connection", (socket) => {
       }, 10000);
     }
   });
+    socket.on("resetGame", () => {
+    players = {};
+    currentQuestion = 0;
+    answered = new Set();
+    gameStarted = false;
+    roomCode = generateCode();
+
+    io.emit("playerList", []);     // 닉네임 목록 초기화
+    io.emit("gameReset");          // 클라이언트에 초기화 알림
+    io.emit("code", roomCode);     // 새 코드 전송
+    console.log("🔄 수동 초기화 완료, 새 코드:", roomCode);
+  });
 }); // 이 괄호는 꼭 닫혀야 합니다!
 
 function broadcastQuestion() {
