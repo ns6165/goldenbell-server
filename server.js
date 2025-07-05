@@ -19,8 +19,16 @@ let questions = [];
 try {
   const rawData = fs.readFileSync("data/goldenbell.json", "utf-8");
   questions = JSON.parse(rawData);
+  shuffleArray(questions);  // ✅ 셔플 추가
 } catch (error) {
   console.error("문제 로딩 오류:", error);
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
 }
 
 let players = {};
