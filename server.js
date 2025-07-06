@@ -30,6 +30,9 @@ function shuffleArray(array) {
     [array[i], array[j]] = [array[j], array[i]];
   }
 }
+// ✅ [1] 맨 위에 상수 정의 (shuffleArray 아래)
+const COUNTDOWN_DELAY = 4000;      // 4초 (ms)
+const GAME_DURATION = 100000;      // 100초 (ms)
 
 let players = {};
 let currentQuestion = 0;
@@ -68,25 +71,28 @@ io.on("connection", (socket) => {
     socket.emit("playerList", Object.values(players).map(p => p.nickname));
   });
 
-  socket.on("start", () => {
-    if (gameStarted) return;
-    gameStarted = true;
-    currentQuestion = 0;
-    answered.clear();
+// ✅ [2] socket.on("start") 내부 수정
+socket.on("start", () => {
+  if (gameStarted) return;
+  gameStarted = true;
+  currentQuestion = 0;
+  answered.clear();
 
-    io.emit("startGame");
+  io.emit("startGame");
 
-    setTimeout(() => {
-      broadcastQuestion();
-    }, 4000);
-      setTimeout(() => {
+  setTimeout(() => {
+    broadcastQuestion();
+  }, COUNTDOWN_DELAY);  // 👈 여기 수정
+
+  setTimeout(() => {
     if (gameStarted) {
-      console.log("⏱️ 100초 경과로 게임 강제 종료");
-      sendFinalResults();     // 결과 전송
-      gameStarted = false;    // 중복 방지
+      console.log("⏱️ 시간 종료로 게임 강제 종료");
+      sendFinalResults();
+      gameStarted = false;
     }
-  }, 100000); // 100초 = 100000ms
+  }, COUNTDOWN_DELAY + GAME_DURATION); // 👈 여기 수정
 });
+
 
   socket.on("answer", ({ answerText, scoreDelta }) => {
     const player = players[socket.id];
