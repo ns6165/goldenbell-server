@@ -79,7 +79,14 @@ io.on("connection", (socket) => {
     setTimeout(() => {
       broadcastQuestion();
     }, 4000);
-  });
+      setTimeout(() => {
+    if (gameStarted) {
+      console.log("⏱️ 100초 경과로 게임 강제 종료");
+      sendFinalResults();     // 결과 전송
+      gameStarted = false;    // 중복 방지
+    }
+  }, 100000); // 100초 = 100000ms
+});
 
   socket.on("answer", ({ answerText, scoreDelta }) => {
     const player = players[socket.id];
